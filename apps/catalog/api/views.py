@@ -3,7 +3,7 @@ from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from apps.catalog.models import Ingredient, Product
 
-from .pagination import StandardCursorPagination
+from apps.common.pagination import CreatedAtCursorPagination
 from .serializers import IngredientSerializer, ProductSerializer
 
 
@@ -15,7 +15,7 @@ class ProductViewSet(ReadOnlyModelViewSet):
 
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
-    pagination_class = StandardCursorPagination
+    pagination_class = CreatedAtCursorPagination
 
     def get_queryset(self):
         return (
@@ -33,7 +33,7 @@ class IngredientViewSet(ReadOnlyModelViewSet):
 
     serializer_class = IngredientSerializer
     permission_classes = [AllowAny]
-    pagination_class = StandardCursorPagination
+    pagination_class = CreatedAtCursorPagination
 
     def get_queryset(self):
         return (

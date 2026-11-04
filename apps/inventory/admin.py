@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.db.models import Sum
 
-from .models import InventoryLot, StockMovement
+from .models import InventoryLot, StockMovement, StockReservation
 from .services.stock import get_balance
 
 
@@ -65,6 +65,34 @@ class StockMovementAdmin(admin.ModelAdmin):
     date_hierarchy = "occurred_at"
 
     # Append-only: admin'de düzenleme/silme yok
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+
+@admin.register(StockReservation)
+class StockReservationAdmin(admin.ModelAdmin):
+    list_display = ["id", "lot", "quantity", "status", "order_id", "expires_at", "created_at"]
+    list_filter = ["status"]
+    search_fields = ["lot__internal_lot_code", "lot__ingredient__sku", "order_id"]
+    readonly_fields = [
+        "lot",
+        "quantity",
+        "status",
+        "order_id",
+        "expires_at",
+        "created_at",
+        "closed_at",
+        "actor",
+    ]
+
+    # Rezervasyonlar sadece servis katmanından yaratılır/değiştirilir
+    def has_add_permission(self, request):
+        return False
+
     def has_change_permission(self, request, obj=None):
         return False
 

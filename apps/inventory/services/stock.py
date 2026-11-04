@@ -22,10 +22,23 @@ def get_balance(lot: InventoryLot) -> Decimal:
 
 
 def get_available_balance(lot: InventoryLot) -> Decimal:
-    """Rezerve edilebilir/kullanılabilir miktar (kalite kapısından geçmiş)."""
+    """
+    Fiziksel bakiye eksi aktif rezervasyonlar. Kalite kapısından
+    geçmemişse 0.
+    """
     if lot.quality_status != QualityStatus.RELEASED:
         return Decimal("0")
-    return max(get_balance(lot), Decimal("0"))
+
+    balance = get_balance(lot)
+    from apps.inventory.models import ReservationStatus  # local import
+
+    reserved = (
+        lot.reservations.filter(status=ReservationStatus.ACTIVE).aggregate(
+            total=Sum("quantity")
+        )["total"]
+        or Decimal("0")
+    )
+    return max(balance - reserved, Decimal("0"))
 
 
 # İşaret kuralları: miktar POZİTİF girilir, delta otomatik üretilir
