@@ -40,6 +40,14 @@ def _generate_order_number() -> str:
         seq = 1
     return f"{prefix}{seq:04d}"
 
+def _normalize_pid(pid) -> str:
+    """String veya UUID kabul eder, kanonik UUID string döner."""
+    import uuid as _uuid
+    try:
+        return str(_uuid.UUID(str(pid)))
+    except (ValueError, TypeError, AttributeError) as e:
+        raise ValueError(f"Geçersiz product_id: {pid}") from e
+
 
 def _get_active_recipe_version(product: Product) -> RecipeVersion | None:
     """Ürünün o anki onaylı reçete sürümü (varsa)."""
@@ -72,9 +80,9 @@ def create_order(
     # Aynı ürün iki kez gönderilirse tek satırda birleştir
     seen: dict = {}
     for it in items:
-        pid = it.get("product_id")
+        pid = _normalize_pid(it.get("product_id"))
         qty = int(it.get("quantity", 0))
-        if not pid or qty <= 0:
+        if qty <= 0:
             raise ValueError(f"Geçersiz satır: {it}")
         seen[pid] = seen.get(pid, 0) + qty
 
@@ -87,7 +95,7 @@ def create_order(
 
     # Ürünleri tek sorguda çek
     products = {
-        p.id: p
+        str(p.id): p
         for p in Product.objects.filter(id__in=list(seen.keys()), is_active=True)
     }
     if len(products) != len(seen):
