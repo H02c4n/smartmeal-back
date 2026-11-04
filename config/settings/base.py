@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     # local
     "apps.accounts",
     "apps.catalog",
+    "apps.recipes",
 ]
 
 MIDDLEWARE = [
