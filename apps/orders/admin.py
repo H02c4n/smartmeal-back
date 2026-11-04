@@ -1,6 +1,7 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 
-from .models import Order, OrderLine
+from .models import Order, OrderLine, OrderStatus
+from .services.fulfillment import cancel_order, confirm_order
 
 
 class OrderLineInline(admin.TabularInline):
@@ -22,6 +23,30 @@ class OrderLineInline(admin.TabularInline):
     can_delete = False
 
 
+@admin.action(description="Seçili PLACED siparişleri onayla (rezervasyonlu)")
+def _action_confirm(modeladmin, request, queryset):
+    for order in queryset.filter(status=OrderStatus.PLACED):
+        try:
+            confirm_order(order_id=order.id, actor=request.user)
+        except ValueError as e:
+            modeladmin.message_user(
+                request, f"{order.order_number}: {e}", level=messages.ERROR
+            )
+
+
+@admin.action(description="Seçili siparişleri iptal et")
+def _action_cancel(modeladmin, request, queryset):
+    for order in queryset.filter(
+        status__in=[OrderStatus.PLACED, OrderStatus.CONFIRMED]
+    ):
+        try:
+            cancel_order(order_id=order.id, reason="admin cancel", actor=request.user)
+        except ValueError as e:
+            modeladmin.message_user(
+                request, f"{order.order_number}: {e}", level=messages.ERROR
+            )
+
+
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = [
@@ -38,6 +63,7 @@ class OrderAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"
     readonly_fields = [
         "order_number",
+        "status",  # ★ state machine — sadece servis değiştirir
         "created_at",
         "updated_at",
         "confirmed_at",
@@ -47,15 +73,21 @@ class OrderAdmin(admin.ModelAdmin):
         "delivery_address_snapshot",
     ]
     inlines = [OrderLineInline]
+    actions = [_action_confirm, _action_cancel]
     fieldsets = (
         (None, {"fields": ("order_number", "customer", "status")}),
         ("Delivery", {"fields": ("delivery_date", "delivery_address_snapshot")}),
-        ("Amounts", {"fields": ("currency", "subtotal", "tax_amount", "delivery_fee", "total_amount")}),
+        (
+            "Amounts",
+            {"fields": ("currency", "subtotal", "tax_amount", "delivery_fee", "total_amount")},
+        ),
         ("Notes", {"fields": ("notes", "cancellation_reason")}),
-        ("Timestamps", {"fields": ("created_at", "updated_at", "confirmed_at", "cancelled_at")}),
+        (
+            "Timestamps",
+            {"fields": ("created_at", "updated_at", "confirmed_at", "cancelled_at")},
+        ),
     )
 
-    # Sipariş servis katmanından yönetilir
     def has_add_permission(self, request):
         return False
 

@@ -6,7 +6,9 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.catalog.models import Ingredient, Product, ProductCategory, UnitOfMeasure
 from apps.recipes.models import RecipeLine, RecipeVersion, RecipeVersionStatus
-
+from apps.inventory.models import InventoryLot, MovementType, QualityStatus
+from apps.inventory.services.stock import record_movement
+from apps.purchasing.models import Supplier
 
 VALID_ADDRESS = {
     "street_address": "Testgatan 1",
@@ -57,3 +59,31 @@ def make_approved_recipe(product, version=1):
     recipe.refresh_from_db()
     assert recipe.status == RecipeVersionStatus.APPROVED
     return recipe
+
+
+def make_supplier(name="Test Supplier"):
+    return Supplier.objects.get_or_create(name=name)[0]
+
+
+def make_released_lot(*, ingredient, code=None, qty=None, expiry_date=None):
+    """RELEASED lot yaratır; verilmişse `qty` kadar RECEIPT hareketi yazar."""
+    import uuid
+    from django.utils import timezone
+
+    code = code or f"LOT-{uuid.uuid4().hex[:8]}"
+    lot = InventoryLot.objects.create(
+        ingredient=ingredient,
+        supplier=make_supplier(),
+        supplier_lot_code=code,
+        internal_lot_code=code,
+        received_at=timezone.now(),
+        expiry_date=expiry_date,
+        quality_status=QualityStatus.RELEASED,
+    )
+    if qty is not None:
+        record_movement(
+            lot_id=lot.id,
+            movement_type=MovementType.RECEIPT,
+            quantity=Decimal(str(qty)),
+        )
+    return lot
