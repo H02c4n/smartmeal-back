@@ -29,6 +29,8 @@ INSTALLED_APPS = [
     "apps.purchasing",
     "apps.inventory",
     "apps.orders",
+    "apps.production",
+    "apps.quality",
 ]
 
 MIDDLEWARE = [
@@ -90,8 +92,9 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "PAGE_SIZE": 50,
 }
+
+APPEND_SLASH = False
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "SmartMeal API",
@@ -105,4 +108,10 @@ CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS",
     default=["http://localhost:3000", "http://localhost:3001"],
 )
+
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS",
+    default=["http://localhost:3000", "http://localhost:8000"],
+)
+
 CORS_ALLOW_CREDENTIALS = True

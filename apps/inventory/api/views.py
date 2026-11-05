@@ -13,7 +13,7 @@ from .serializers import InventoryLotSerializer, StockMovementSerializer
 class InventoryLotViewSet(ReadOnlyModelViewSet):
     serializer_class = InventoryLotSerializer
     permission_classes = [AllowAny]
-    pagination_class = CreatedAtCursorPagination  # ← EKLE
+    pagination_class = CreatedAtCursorPagination
 
     def get_queryset(self):
         qs = InventoryLot.objects.select_related("ingredient", "supplier")
@@ -29,7 +29,7 @@ class InventoryLotViewSet(ReadOnlyModelViewSet):
 class StockMovementViewSet(ReadOnlyModelViewSet):
     serializer_class = StockMovementSerializer
     permission_classes = [AllowAny]
-    pagination_class = OccurredAtCursorPagination  # ← EKLE
+    pagination_class = OccurredAtCursorPagination
 
     def get_queryset(self):
         qs = StockMovement.objects.select_related("lot")

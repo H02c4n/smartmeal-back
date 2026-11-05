@@ -1,3 +1,4 @@
+from apps.common.pagination import CreatedAtCursorPagination
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -12,7 +13,6 @@ from apps.orders.services.order import create_order
 
 from .permissions import IsOwnerOrStaff, IsStaff
 from .serializers import OrderCreateSerializer, OrderSerializer
-from apps.common.pagination import CreatedAtCursorPagination
 
 
 class OrderViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):

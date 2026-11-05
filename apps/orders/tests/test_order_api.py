@@ -53,13 +53,13 @@ def _order_payload(product, quantity=1):
 class TestOrderCreateAPI:
     def test_unauthenticated_401(self, api_client):
         p = make_product()
-        res = api_client.post("/api/v1/orders/", _order_payload(p), format="json")
+        res = api_client.post("/api/v1/orders", _order_payload(p), format="json")
         assert res.status_code == 403
 
     def test_authenticated_create(self, customer_client):
         c, user = customer_client
         p = make_product(price="89.00")
-        res = c.post("/api/v1/orders/", _order_payload(p, quantity=2), format="json")
+        res = c.post("/api/v1/orders", _order_payload(p, quantity=2), format="json")
         assert res.status_code == 201
         data = res.json()
         assert data["status"] == "PLACED"
@@ -69,15 +69,15 @@ class TestOrderCreateAPI:
 
     def test_invalid_payload_400(self, customer_client):
         c, _ = customer_client
-        res = c.post("/api/v1/orders/", {"items": []}, format="json")
+        res = c.post("/api/v1/orders", {"items": []}, format="json")
         assert res.status_code == 400
 
     def test_idempotency_key_returns_same_response(self, customer_client):
         c, _ = customer_client
         p = make_product()
         payload = _order_payload(p)
-        res1 = c.post("/api/v1/orders/", payload, format="json", HTTP_IDEMPOTENCY_KEY="k1")
-        res2 = c.post("/api/v1/orders/", payload, format="json", HTTP_IDEMPOTENCY_KEY="k1")
+        res1 = c.post("/api/v1/orders", payload, format="json", HTTP_IDEMPOTENCY_KEY="k1")
+        res2 = c.post("/api/v1/orders", payload, format="json", HTTP_IDEMPOTENCY_KEY="k1")
         assert res1.status_code == res2.status_code == 201
         assert res1.json()["id"] == res2.json()["id"]
         assert Order.objects.count() == 1
@@ -87,9 +87,9 @@ class TestOrderCreateAPI:
         c, _ = customer_client
         p1 = make_product(sku="P1")
         p2 = make_product(sku="P2")
-        c.post("/api/v1/orders/", _order_payload(p1, 1), format="json", HTTP_IDEMPOTENCY_KEY="k1")
+        c.post("/api/v1/orders", _order_payload(p1, 1), format="json", HTTP_IDEMPOTENCY_KEY="k1")
         res = c.post(
-            "/api/v1/orders/", _order_payload(p2, 2), format="json", HTTP_IDEMPOTENCY_KEY="k1"
+            "/api/v1/orders", _order_payload(p2, 2), format="json", HTTP_IDEMPOTENCY_KEY="k1"
         )
         assert res.status_code == 422
         assert res.json()["error"]["code"] == "IDEMPOTENCY_CONFLICT"
@@ -109,7 +109,7 @@ class TestOrderListAPI:
             order_number="SM-B", customer=other,
             delivery_date="2026-11-15", delivery_address_snapshot=VALID_ADDRESS,
         )
-        res = c.get("/api/v1/orders/")
+        res = c.get("/api/v1/orders")
         assert res.status_code == 200
         nums = [r["order_number"] for r in res.json()["results"]]
         assert "SM-A" in nums
@@ -123,7 +123,7 @@ class TestOrderListAPI:
                              delivery_date="2026-11-15", delivery_address_snapshot=VALID_ADDRESS)
         Order.objects.create(order_number="SM-B", customer=b,
                              delivery_date="2026-11-15", delivery_address_snapshot=VALID_ADDRESS)
-        res = c.get("/api/v1/orders/")
+        res = c.get("/api/v1/orders")
         assert len(res.json()["results"]) == 2
 
 
@@ -132,8 +132,8 @@ class TestOrderCancelConfirmAPI:
     def test_owner_cancel(self, customer_client):
         c, user = customer_client
         p = make_product()
-        order = c.post("/api/v1/orders/", _order_payload(p), format="json").json()
-        res = c.post(f"/api/v1/orders/{order['id']}/cancel/", {"reason": "test"}, format="json")
+        order = c.post("/api/v1/orders", _order_payload(p), format="json").json()
+        res = c.post(f"/api/v1/orders/{order['id']}/cancel", {"reason": "test"}, format="json")
         assert res.status_code == 200
         assert res.json()["status"] == "CANCELLED"
 
@@ -144,14 +144,14 @@ class TestOrderCancelConfirmAPI:
             order_number="SM-OTHER", customer=other,
             delivery_date="2026-11-15", delivery_address_snapshot=VALID_ADDRESS,
         )
-        res = c.post(f"/api/v1/orders/{o.id}/cancel/", {}, format="json")
+        res = c.post(f"/api/v1/orders/{o.id}/cancel", {}, format="json")
         assert res.status_code == 404  # get_queryset filter'ı yüzünden
 
     def test_owner_cannot_confirm(self, customer_client):
         c, _ = customer_client
         p = make_product()
-        order = c.post("/api/v1/orders/", _order_payload(p), format="json").json()
-        res = c.post(f"/api/v1/orders/{order['id']}/confirm/", {}, format="json")
+        order = c.post("/api/v1/orders", _order_payload(p), format="json").json()
+        res = c.post(f"/api/v1/orders/{order['id']}/confirm", {}, format="json")
         assert res.status_code == 403
 
     def test_staff_confirm_happy_path(self, staff_client):
@@ -169,7 +169,7 @@ class TestOrderCancelConfirmAPI:
             delivery_address=VALID_ADDRESS,
             items=[{"product_id": product.id, "quantity": 1}],
         )
-        res = c.post(f"/api/v1/orders/{order.id}/confirm/", {}, format="json")
+        res = c.post(f"/api/v1/orders/{order.id}/confirm", {}, format="json")
         assert res.status_code == 200
         assert res.json()["status"] == "CONFIRMED"
         assert StockReservation.objects.filter(order_id=order.id, status=ReservationStatus.ACTIVE).exists()
@@ -188,6 +188,6 @@ class TestOrderCancelConfirmAPI:
             delivery_address=VALID_ADDRESS,
             items=[{"product_id": product.id, "quantity": 1}],
         )
-        res = c.post(f"/api/v1/orders/{order.id}/confirm/", {}, format="json")
+        res = c.post(f"/api/v1/orders/{order.id}/confirm", {}, format="json")
         assert res.status_code == 409
         assert res.json()["error"]["code"] == "INVALID_STATE_TRANSITION"
