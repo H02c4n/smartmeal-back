@@ -82,7 +82,9 @@ def make_completed_batch(*, qty=2, receipt=10000):
     confirm_order(order_id=order.id)
 
     plan, _ = plan_batches_for_date(production_date=target)
-    batch = ProductionBatch.objects.get(plan=plan)
+    batch = ProductionBatch.objects.get(
+        plan=plan, order_line__order=order
+    )
 
     start_batch(batch_id=batch.id)
     complete_batch(batch_id=batch.id, actual_quantity=qty)

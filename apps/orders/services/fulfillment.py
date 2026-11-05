@@ -26,6 +26,12 @@ from apps.orders.models import Order, OrderStatus
 # ---------------------------------------------------------------------------
 # İç yardımcılar
 # ---------------------------------------------------------------------------
+def _fmt_d(value) -> str:
+    """Decimal('5.000') → '5', Decimal('5.500') → '5.5' — gereksiz sıfırları sil."""
+    if value is None:
+        return "?"
+    return format(value.normalize(), "f")
+
 def _aggregate_ingredient_needs(order: Order) -> dict:
     """
     Siparişteki tüm satırlardan toplam malzeme ihtiyacını hesaplar.
@@ -38,7 +44,7 @@ def _aggregate_ingredient_needs(order: Order) -> dict:
         recipe = line.recipe_version_snapshot
         if recipe is None:
             raise ValueError(
-                f"Satır {line.id} için onaylı reçete yok. "
+                f"{line.product_name_snapshot} için onaylı reçete yok. "
                 f"Sipariş onaylanamaz."
             )
         if recipe.yield_quantity is None or recipe.yield_quantity <= 0:
@@ -58,11 +64,13 @@ def _allocate_fefo(needs: dict) -> list[tuple]:
     Döndürülen: [(lot, quantity), ...]. Toplam her malzeme için ihtiyacı
     karşılamıyorsa ValueError fırlatır.
     """
+    from apps.catalog.models import Ingredient
+
     allocations: list[tuple] = []
     for ingredient_id, needed in needs.items():
         remaining = needed
-        # Sadece RELEASED lot'lar; available 0 olanlar da dahil edilir
-        # (min(remaining, avail=0) = 0 → atlanır).
+        available_total = Decimal("0")
+
         lots = InventoryLot.objects.filter(
             ingredient_id=ingredient_id,
             quality_status=QualityStatus.RELEASED,
@@ -72,6 +80,7 @@ def _allocate_fefo(needs: dict) -> list[tuple]:
             if remaining <= 0:
                 break
             avail = get_available_balance(lot)
+            available_total += avail
             if avail <= 0:
                 continue
             take = min(remaining, avail)
@@ -79,9 +88,25 @@ def _allocate_fefo(needs: dict) -> list[tuple]:
             remaining -= take
 
         if remaining > 0:
+            ingredient = (
+                Ingredient.objects.select_related("base_unit")
+                .filter(pk=ingredient_id)
+                .first()
+            )
+            if ingredient:
+                unit = (
+                    ingredient.base_unit.code if ingredient.base_unit else "adet"
+                )
+                label = f"{ingredient.name} ({ingredient.sku})"
+            else:
+                unit = "adet"
+                label = str(ingredient_id)
+
             raise ValueError(
-                f"Yetersiz stok. Malzeme: {ingredient_id}, "
-                f"eksik: {remaining}."
+                f"Yetersiz stok: {label} — "
+                f"İstenen: {_fmt_d(needed)} {unit}, "
+                f"mevcut: {_fmt_d(available_total)} {unit}, "
+                f"eksik: {_fmt_d(remaining)} {unit}."
             )
     return allocations
 

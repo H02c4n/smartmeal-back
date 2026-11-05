@@ -5,7 +5,7 @@ import pytest
 
 from apps.orders.models import Order, OrderLine, OrderStatus
 
-from .fixtures import VALID_ADDRESS, make_customer, make_product
+from apps.orders.tests.fixtures import VALID_ADDRESS, make_customer, make_product
 
 
 @pytest.mark.django_db

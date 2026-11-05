@@ -29,15 +29,24 @@ def make_category():
 
 
 def make_product(sku="PRD-1", name="Mercimek Çorbası", price="89.00"):
-    return Product.objects.create(
+    product, _ = Product.objects.get_or_create(
         sku=sku,
-        name=name,
-        category=make_category(),
-        price=Decimal(price),
+        defaults={
+            "name": name,
+            "category": make_category(),
+            "price": Decimal(price),
+        },
     )
-
+    return product
 
 def make_approved_recipe(product, version=1):
+    # Aynı product + versiyon zaten varsa dön
+    existing = RecipeVersion.objects.filter(
+        product=product, version_number=version
+    ).first()
+    if existing:
+        return existing
+
     g = UnitOfMeasure.objects.get_or_create(code="g", defaults={"name": "gram"})[0]
     adet = UnitOfMeasure.objects.get_or_create(code="adet", defaults={"name": "adet"})[0]
     ing = Ingredient.objects.get_or_create(

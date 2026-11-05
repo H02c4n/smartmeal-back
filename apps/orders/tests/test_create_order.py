@@ -7,7 +7,7 @@ from django.utils import timezone
 from apps.orders.models import Order, OrderStatus
 from apps.orders.services.order import create_order
 
-from .fixtures import VALID_ADDRESS, make_approved_recipe, make_customer, make_product
+from apps.orders.tests.fixtures import VALID_ADDRESS, make_approved_recipe, make_customer, make_product
 
 
 @pytest.mark.django_db

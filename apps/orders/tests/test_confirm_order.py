@@ -11,7 +11,7 @@ from apps.orders.models import OrderStatus
 from apps.orders.services.fulfillment import cancel_order, confirm_order
 from apps.orders.services.order import create_order
 
-from .fixtures import (
+from apps.orders.tests.fixtures import (
     VALID_ADDRESS,
     make_approved_recipe,
     make_customer,
@@ -65,8 +65,17 @@ class TestConfirmOrder:
         make_released_lot(ingredient=ingredient, qty=500)  # ihtiyaç 1000, stok 500
 
         order = _place_order(customer, product, quantity=2)
-        with pytest.raises(ValueError, match="Yetersiz stok"):
+        with pytest.raises(ValueError) as exc_info:
             confirm_order(order_id=order.id)
+
+        # Mesaj anlaşılır olmalı: malzeme adı + SKU, miktar detayı
+        msg = str(exc_info.value)
+        assert "Yetersiz stok" in msg
+        assert ingredient.sku in msg          # ING-UN
+        assert ingredient.name in msg          # Un
+        assert "İstenen" in msg
+        assert "mevcut" in msg
+        assert "eksik" in msg
 
         order.refresh_from_db()
         assert order.status == OrderStatus.PLACED
@@ -77,8 +86,14 @@ class TestConfirmOrder:
         customer = make_customer()
         product = make_product()  # no approved recipe
         order = _place_order(customer, product, quantity=1)
-        with pytest.raises(ValueError, match="onaylı reçete yok"):
+        with pytest.raises(ValueError) as exc_info:
             confirm_order(order_id=order.id)
+
+        # Ürün adı mesajda olmalı (UUID değil)
+        msg = str(exc_info.value)
+        assert "onaylı reçete yok" in msg
+        assert product.name in msg
+
         order.refresh_from_db()
         assert order.status == OrderStatus.PLACED
 

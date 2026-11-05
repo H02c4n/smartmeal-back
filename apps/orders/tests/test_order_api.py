@@ -9,7 +9,7 @@ from apps.accounts.models import User
 from apps.inventory.models import ReservationStatus, StockReservation
 from apps.orders.models import IdempotencyRecord, Order, OrderStatus
 
-from .fixtures import (
+from apps.orders.tests.fixtures import (
     VALID_ADDRESS,
     make_approved_recipe,
     make_customer,

@@ -30,9 +30,25 @@ class OrderViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
 
     def get_queryset(self):
         qs = Order.objects.select_related("customer").prefetch_related("lines")
-        if self.request.user.is_staff:
-            return qs
-        return qs.filter(customer=self.request.user)
+
+        # Staff olmayan sadece kendi siparişini görür
+        if not self.request.user.is_staff:
+            return qs.filter(customer=self.request.user)
+
+        # Staff için filtre desteği
+        status = self.request.query_params.get("status")
+        if status:
+            qs = qs.filter(status=status)
+
+        search = self.request.query_params.get("search")
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(order_number__icontains=search)
+                | Q(customer__email__icontains=search)
+            )
+
+        return qs
 
     def get_permissions(self):
         if self.action == "confirm":

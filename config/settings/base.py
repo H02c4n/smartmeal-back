@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "apps.production",
     "apps.quality",
     "apps.packing",
+    "apps.delivery",
 ]
 
 MIDDLEWARE = [
@@ -112,7 +113,7 @@ CORS_ALLOWED_ORIGINS = env.list(
 
 CSRF_TRUSTED_ORIGINS = env.list(
     "CSRF_TRUSTED_ORIGINS",
-    default=["http://localhost:3000", "http://localhost:8000"],
+    default=["http://localhost:3000", "http://localhost:3001", "http://localhost:8000"],
 )
 
 CORS_ALLOW_CREDENTIALS = True
